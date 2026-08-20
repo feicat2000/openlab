@@ -1,0 +1,428 @@
+metadata:
+  name: "96-Well Plasmid Miniprep"
+  version: "1.0"
+  author: "OpenLab"
+  description: >
+    Alkaline-lysis plasmid miniprep for 96 deep-well format.
+    Recovers high-purity plasmid DNA from 1.2 mL overnight E. coli cultures
+    using a spin-column plate approach (compatible with Qiagen QIAprep 96,
+    Omega Bio-tek E.Z.N.A., or equivalent).
+    Typical yield: 0.5–4 µg per well; purity A260/A280 ≥ 1.8.
+  safety_level: BSL1
+  created_at: "2026-02-28"
+
+# ── Materials ────────────────────────────────────────────────────────────────
+materials:
+  reagents:
+    - name: "Buffer P1 (Resuspension Buffer + RNase A)"
+      volume_ul: 9600          # 100 µL × 96 wells
+      concentration: "50 mM Tris-HCl pH 8.0, 10 mM EDTA, 100 µg/mL RNase A"
+      storage_temp_c: 4.0
+      hazard_class: none
+      notes: "Pre-chill to 4°C. Ensure RNase A is added before use."
+
+    - name: "Buffer P2 (Lysis Buffer)"
+      volume_ul: 9600          # 100 µL × 96 wells
+      concentration: "200 mM NaOH, 1% SDS"
+      storage_temp_c: 25.0
+      hazard_class: corrosive
+      notes: "Do not vortex. Mix by inversion only. Do not allow lysis >5 min."
+
+    - name: "Buffer N3 (Neutralization Buffer)"
+      volume_ul: 9600          # 100 µL × 96 wells
+      concentration: "3 M potassium acetate pH 5.5"
+      storage_temp_c: 25.0
+      hazard_class: none
+      notes: "White precipitate will form — this is expected."
+
+    - name: "Buffer PB (Binding/Wash Buffer)"
+      volume_ul: 19200         # 200 µL × 96 wells
+      concentration: "5 M guanidinium chloride, isopropanol"
+      storage_temp_c: 25.0
+      hazard_class: flammable
+      notes: "Chaotropic salt + isopropanol. Flammable. Ensure ethanol added if required."
+
+    - name: "Buffer PE (Wash Buffer)"
+      volume_ul: 19200         # 200 µL × 96 wells
+      concentration: "10 mM Tris-HCl pH 7.5, 80% ethanol"
+      storage_temp_c: 25.0
+      hazard_class: flammable
+      notes: "Ethanol-containing. Must add ethanol before first use if concentrate."
+
+    - name: "Buffer EB (Elution Buffer)"
+      volume_ul: 9600          # 100 µL × 96 wells
+      concentration: "10 mM Tris-HCl pH 8.5"
+      storage_temp_c: 25.0
+      hazard_class: none
+      notes: "Pre-warm to 65°C for higher elution efficiency."
+
+    - name: "Water (nuclease-free)"
+      volume_ul: 5000
+      hazard_class: none
+      notes: "For dilutions and wash steps."
+
+# ── Consumables ───────────────────────────────────────────────────────────────
+consumables:
+  - name: "96 Deep-Well Block (2.2 mL, square-well)"
+    quantity: 2
+    supplier: "Eppendorf"
+    catalog_number: "0030502358"
+    notes: "Pre-filled with 1.2 mL overnight E. coli culture per well."
+
+  - name: "QIAprep 96 Turbo Spin Column Plate (or equivalent)"
+    quantity: 1
+    supplier: "Qiagen"
+    catalog_number: "27191"
+    notes: "Silica membrane 96-well spin plate."
+
+  - name: "S-Block (Waste Collection Block)"
+    quantity: 2
+    supplier: "Qiagen"
+    notes: "Deep-well waste collection block for centrifuge."
+
+  - name: "Elution Microplate (96-well, 200 µL)"
+    quantity: 1
+    supplier: "Nunc"
+    notes: "For final eluted plasmid DNA collection."
+
+  - name: "Pierceable Foil Seal"
+    quantity: 3
+    notes: "For sealing blocks during centrifugation."
+
+  - name: "Opentrons 300 µL Tips"
+    quantity: 3
+    notes: "3 × 96-tip racks (one per pipetting stage)."
+
+  - name: "Opentrons 1000 µL Tips"
+    quantity: 2
+    notes: "For large-volume buffer additions."
+
+# ── Equipment ─────────────────────────────────────────────────────────────────
+equipment:
+  - name: opentrons
+    model: "Opentrons Flex (96-channel head)"
+    required: true
+
+  - name: centrifuge
+    model: "Eppendorf 5430R with MTP rotor"
+    required: true
+
+  - name: vortex
+    model: "IKA Vortex 3 (plate adapter)"
+    required: true
+
+  - name: incubator
+    model: "Inheco ODTC (for EB pre-warm, optional)"
+    required: false
+
+# ── Steps ─────────────────────────────────────────────────────────────────────
+steps:
+
+  # ── Stage 1: Cell pelleting ─────────────────────────────────────────────────
+  - id: 1
+    name: "Seal deep-well block with foil"
+    type: manual
+    notes: >
+      Place the deep-well block (96 × 1.2 mL E. coli overnight culture) on
+      the centrifuge adapter. Seal tightly with pierceable foil.
+    params: {}
+
+  - id: 2
+    name: "Centrifuge – pellet cells"
+    type: centrifuge
+    params:
+      rpm: 4000
+      duration_s: 600          # 10 min at 4000 rpm (≈ 2700 × g with MTP rotor)
+      temp_c: 4
+    notes: "Pellets should be visible and compact. Decant supernatant carefully."
+
+  - id: 3
+    name: "Decant culture supernatant"
+    type: manual
+    notes: >
+      Invert the sealed block over a waste receptacle and tap firmly to remove
+      supernatant. Blot on paper towels. Re-seal with fresh foil if needed.
+    params: {}
+
+  # ── Stage 2: Resuspension ───────────────────────────────────────────────────
+  - id: 4
+    name: "Add Buffer P1 (resuspension)"
+    type: pipette
+    params:
+      source: "reagent_reservoir_1"
+      destination: "deep_well_block_1"
+      volume_ul: 100
+      mix_repetitions: 5
+      mix_volume_ul: 80
+      tip_type: "300ul"
+      multi_dispense: true
+    notes: >
+      Dispense 100 µL P1 into each well. Mix vigorously by pipetting 5× to
+      fully resuspend the pellet. No cell clumps should remain.
+
+  - id: 5
+    name: "Vortex to ensure complete resuspension"
+    type: vortex
+    params:
+      rpm: 1800
+      duration_s: 60
+      tube_position: null
+    notes: "Use plate adapter. 1 min at medium speed ensures homogeneous resuspension."
+
+  # ── Stage 3: Alkaline lysis ─────────────────────────────────────────────────
+  - id: 6
+    name: "Add Buffer P2 (alkaline lysis)"
+    type: pipette
+    params:
+      source: "reagent_reservoir_2"
+      destination: "deep_well_block_1"
+      volume_ul: 100
+      mix_repetitions: 0        # Do NOT pipette-mix — inversion only!
+      tip_type: "300ul"
+      multi_dispense: true
+    notes: >
+      Dispense 100 µL P2 gently. Do NOT vortex or pipette-mix: vigorous mixing
+      shears chromosomal DNA into the lysate. Solution should turn blue if
+      pH indicator is present.
+
+  - id: 7
+    name: "Seal block and invert 6× to mix"
+    type: manual
+    notes: >
+      Seal block with foil. Invert 6 times gently. Lysis time must be ≤ 5 min.
+      Solution should be clear and viscous.
+    params: {}
+
+  - id: 8
+    name: "Lysis incubation (≤ 5 min, room temp)"
+    type: wait
+    params:
+      duration_s: 240           # 4 min — must not exceed 5 min
+    notes: "Do not exceed 5 min lysis time — irreversible chromosomal DNA denaturation occurs."
+
+  # ── Stage 4: Neutralisation ─────────────────────────────────────────────────
+  - id: 9
+    name: "Add Buffer N3 (neutralisation)"
+    type: pipette
+    params:
+      source: "reagent_reservoir_3"
+      destination: "deep_well_block_1"
+      volume_ul: 100
+      mix_repetitions: 0
+      tip_type: "300ul"
+      multi_dispense: true
+    notes: >
+      Dispense 100 µL N3. Immediately invert block 6 times to neutralise.
+      A dense white precipitate (SDS-protein-chromosomal DNA complex) forms.
+
+  - id: 10
+    name: "Invert block 6× to mix neutralisation"
+    type: invert_tube
+    params:
+      n_times: 6
+    notes: "Ensures complete neutralisation. Precipitate should be uniformly distributed."
+
+  # ── Stage 5: Debris clearance ───────────────────────────────────────────────
+  - id: 11
+    name: "Seal block and centrifuge – clear lysate"
+    type: centrifuge
+    params:
+      rpm: 5600
+      duration_s: 1200          # 20 min at 5600 rpm (≈ 5400 × g)
+      temp_c: 4
+    notes: >
+      Compact white pellet should form at bottom. Clear lysate (supernatant)
+      contains plasmid DNA. Avoid disturbing the pellet in next step.
+
+  # ── Stage 6: Load spin plate ─────────────────────────────────────────────────
+  - id: 12
+    name: "Transfer clarified lysate to spin-column plate"
+    type: pipette
+    params:
+      source: "deep_well_block_1"
+      destination: "spin_column_plate"
+      volume_ul: 280            # Transfer ~280 µL of ~300 µL supernatant
+      aspirate_rate: 50         # slow to avoid pellet disturbance
+      tip_type: "300ul"
+      new_tip: "always"
+    notes: >
+      Aspirate 280 µL from each well carefully, avoiding the white pellet.
+      Dispense into the spin-column plate sitting on an S-Block.
+
+  - id: 13
+    name: "Centrifuge spin-column plate – bind DNA to membrane"
+    type: centrifuge
+    params:
+      rpm: 5600
+      duration_s: 240           # 4 min
+      temp_c: 25
+    notes: "Plasmid DNA binds to silica membrane. Flow-through is discarded."
+
+  - id: 14
+    name: "Discard flow-through from S-Block"
+    type: manual
+    notes: >
+      Remove spin-column plate, empty and re-seat S-Block.
+      Discard flow-through. Re-stack spin-column plate on fresh S-Block.
+    params: {}
+
+  # ── Stage 7: PB wash (remove inhibitors) ────────────────────────────────────
+  - id: 15
+    name: "Add Buffer PB (first wash)"
+    type: pipette
+    params:
+      source: "reagent_reservoir_4"
+      destination: "spin_column_plate"
+      volume_ul: 200
+      tip_type: "1000ul"
+      multi_dispense: true
+    notes: >
+      Dispense 200 µL Buffer PB to each well of spin-column plate.
+      PB removes chaotropic salt residues and co-precipitated proteins.
+
+  - id: 16
+    name: "Centrifuge – PB wash"
+    type: centrifuge
+    params:
+      rpm: 5600
+      duration_s: 240
+      temp_c: 25
+    notes: "Discard flow-through after centrifugation."
+
+  - id: 17
+    name: "Discard PB wash flow-through"
+    type: manual
+    notes: "Empty S-Block, re-seat spin-column plate."
+    params: {}
+
+  # ── Stage 8: PE wash (ethanol) ───────────────────────────────────────────────
+  - id: 18
+    name: "Add Buffer PE – first ethanol wash"
+    type: pipette
+    params:
+      source: "reagent_reservoir_5"
+      destination: "spin_column_plate"
+      volume_ul: 200
+      tip_type: "1000ul"
+      multi_dispense: true
+    notes: "Ethanol wash removes salt and organic contaminants."
+
+  - id: 19
+    name: "Centrifuge – PE first wash"
+    type: centrifuge
+    params:
+      rpm: 5600
+      duration_s: 240
+      temp_c: 25
+    notes: "Discard flow-through."
+
+  - id: 20
+    name: "Add Buffer PE – second ethanol wash"
+    type: pipette
+    params:
+      source: "reagent_reservoir_5"
+      destination: "spin_column_plate"
+      volume_ul: 200
+      tip_type: "1000ul"
+      multi_dispense: true
+    notes: "Second PE wash ensures thorough ethanol purification."
+
+  - id: 21
+    name: "Centrifuge – PE second wash"
+    type: centrifuge
+    params:
+      rpm: 5600
+      duration_s: 240
+      temp_c: 25
+    notes: "Discard flow-through."
+
+  # ── Stage 9: Dry spin ─────────────────────────────────────────────────────────
+  - id: 22
+    name: "Dry spin – remove residual ethanol"
+    type: centrifuge
+    params:
+      rpm: 5600
+      duration_s: 600           # 10 min dry spin
+      temp_c: 25
+    notes: >
+      Critical step. Residual ethanol inhibits downstream enzymatic reactions
+      (restriction digests, PCR, sequencing). Spin until membrane appears dry.
+
+  # ── Stage 10: Elution ─────────────────────────────────────────────────────────
+  - id: 23
+    name: "Pre-warm Elution Buffer EB to 65°C"
+    type: temperature_set
+    params:
+      temperature_c: 65
+      wait_for_temp: true
+    notes: >
+      Pre-warming EB to 65°C significantly increases elution efficiency
+      (+20–40% yield) especially for high-copy plasmids >5 kb.
+
+  - id: 24
+    name: "Transfer spin-column plate to elution microplate"
+    type: manual
+    notes: >
+      Stack spin-column plate directly on top of the 96-well elution microplate.
+      Do NOT use S-Block for this step — DNA will be collected in elution plate.
+    params: {}
+
+  - id: 25
+    name: "Add Buffer EB (pre-warmed 65°C) – elute plasmid DNA"
+    type: pipette
+    params:
+      source: "reagent_reservoir_6"
+      destination: "spin_column_plate"
+      volume_ul: 100
+      tip_type: "300ul"
+      multi_dispense: true
+    notes: >
+      Dispense 100 µL pre-warmed EB into the centre of each membrane.
+      Allow to soak for 2 min before centrifugation for maximum yield.
+
+  - id: 26
+    name: "Wait – EB soak on membrane (2 min)"
+    type: wait
+    params:
+      duration_s: 120
+    notes: "Allow EB to equilibrate with membrane before eluting."
+
+  - id: 27
+    name: "Centrifuge – elute DNA into microplate"
+    type: centrifuge
+    params:
+      rpm: 5600
+      duration_s: 240           # 4 min
+      temp_c: 25
+    notes: >
+      Eluted plasmid DNA is now collected in the 96-well microplate beneath.
+      Typical yield: 0.5–4 µg/well (100 µL volume). Expected A260/A280 ≥ 1.8.
+
+  # ── Stage 11: QC & storage ────────────────────────────────────────────────────
+  - id: 28
+    name: "Seal elution plate and measure DNA concentration (NanoDrop/Qubit)"
+    type: manual
+    notes: >
+      Seal elution plate with adhesive foil. Transfer 2 µL per well to a fresh
+      plate for Quant-iT PicoGreen or NanoDrop 8000 quantification.
+      Expected: 5–40 ng/µL. Store main plate at -20°C.
+    params: {}
+
+  - id: 29
+    name: "Log experiment results"
+    type: comment
+    notes: >
+      96-Well Plasmid Miniprep complete.
+      All 96 wells processed. DNA in elution plate ready for downstream use:
+      sequencing, restriction digest verification, transfection, or transformation.
+    params: {}
+
+# ── Safety notes ──────────────────────────────────────────────────────────────
+safety_notes:
+  - "BSL1 organism (non-pathogenic E. coli K-12 strains). Standard lab PPE: gloves, lab coat, eye protection."
+  - "Buffer P2 contains 1% SDS (irritant) and NaOH (corrosive). Avoid skin/eye contact."
+  - "Buffer PB and PE contain guanidinium chloride and ethanol respectively — flammable. No open flames."
+  - "Lysis time with Buffer P2 must not exceed 5 minutes — longer lysis denatures plasmid DNA irreversibly."
+  - "All liquid waste (P1/P2/N3/PB/PE flow-through) contains SDS and chaotropic salts — collect and dispose per institutional guidelines."
+  - "Centrifuge must be balanced with a counterweight plate before spinning."
+  - "Dry spin step is critical — residual ethanol inhibits restriction enzymes and PCR."

@@ -1,0 +1,657 @@
+metadata:
+  name: "384-Well Sandwich ELISA"
+  version: "1.0"
+  author: "OpenLab"
+  description: >
+    Full sandwich ELISA in 384-well flat-bottom microplate format.
+    Protocol covers: capture-antibody coating, blocking, standard-curve
+    preparation, sample + standard incubation, detection antibody,
+    streptavidin-HRP conjugate, TMB colorimetric development, and
+    plate-reader quantification. Designed for target antigen detection
+    with a typical working range of 15–4000 pg/mL.
+
+    Liquid-handling notes: Opentrons Flex 96-channel head operates in
+    4 quadrant passes (A1–H12, A13–H24, I1–P12, I13–P24) to cover all
+    384 wells. Total volumes include 10 % dead-volume excess.
+    Plate-wash steps use the BioTek ELx405 Select 384 plate washer.
+  safety_level: BSL1
+  created_at: "2026-02-28"
+
+# ── Materials ──────────────────────────────────────────────────────────────────
+materials:
+  reagents:
+    - name: "Carbonate Coating Buffer (pH 9.6)"
+      volume_ul: 12000           # 20 µL × 384 wells + 20 % excess ≈ 9.2 mL rounded up
+      concentration: "50 mM Na2CO3 / NaHCO3"
+      storage_temp_c: 4.0
+      hazard_class: none
+      notes: "Prepare fresh or store at 4°C up to 2 weeks."
+
+    - name: "Capture Antibody Solution"
+      volume_ul: 12000           # 1–4 µg/mL in Carbonate Coating Buffer
+      concentration: "2 µg/mL in Carbonate Coating Buffer"
+      storage_temp_c: 4.0
+      hazard_class: none
+      notes: >
+        Dilute stock capture antibody in carbonate buffer immediately before use.
+        Do not freeze-thaw more than 3×.
+
+    - name: "PBS (Phosphate-Buffered Saline pH 7.4)"
+      volume_ul: 400000          # Wash steps: up to 80 µL × 384 × many washes
+      concentration: "1× PBS, no Ca2+/Mg2+"
+      storage_temp_c: 25.0
+      hazard_class: none
+      notes: "Prepare 10× stock; dilute to 1× for use. Autoclave or filter-sterilise."
+
+    - name: "PBST (PBS + 0.05 % Tween-20)"
+      volume_ul: 350000          # Wash buffer: 80 µL × 384 × 15 wash cycles
+      concentration: "1× PBS, 0.05 % Tween-20"
+      storage_temp_c: 25.0
+      hazard_class: none
+      notes: "Add Tween-20 to PBS immediately before use. Excess foam → centrifuge briefly."
+
+    - name: "Blocking Buffer (1 % BSA-PBS)"
+      volume_ul: 40000           # 80 µL × 384 wells + excess
+      concentration: "1 % (w/v) BSA in 1× PBS"
+      storage_temp_c: 4.0
+      hazard_class: none
+      notes: "Filter-sterilise (0.22 µm). Stable at 4°C for 2 weeks."
+
+    - name: "Recombinant Standard Protein (lyophilised)"
+      volume_ul: 500             # Reconstituted 500 µL stock
+      concentration: "Top standard: 4000 pg/mL after reconstitution"
+      storage_temp_c: -80.0
+      hazard_class: none
+      notes: >
+        Reconstitute in Assay Diluent per datasheet. Serial 2-fold dilution
+        gives 12 points: 4000 → 2000 → 1000 → 500 → 250 → 125 → 62.5 →
+        31.3 → 15.6 → 7.8 → 3.9 → 0 pg/mL (blank). Run in duplicate.
+
+    - name: "Assay Diluent (1 % BSA-PBST)"
+      volume_ul: 30000           # Sample + standard dilutions
+      concentration: "1 % BSA in 1× PBST"
+      storage_temp_c: 4.0
+      hazard_class: none
+      notes: "Used to reconstitute standards and dilute samples."
+
+    - name: "Detection Antibody Solution (biotinylated)"
+      volume_ul: 12000           # 20 µL × 384 + 20 % excess
+      concentration: "0.5 µg/mL biotinylated detection antibody in Assay Diluent"
+      storage_temp_c: 4.0
+      hazard_class: none
+      notes: "Protect from light. Dilute from stock immediately before use."
+
+    - name: "Streptavidin-HRP Conjugate"
+      volume_ul: 12000           # 20 µL × 384 + 20 % excess
+      concentration: "1:10,000 dilution in Assay Diluent"
+      storage_temp_c: 4.0
+      hazard_class: none
+      notes: "Light-sensitive. Keep covered. Do not vortex; mix by gentle inversion."
+
+    - name: "TMB Substrate (3,3',5,5'-Tetramethylbenzidine, ready-to-use)"
+      volume_ul: 12000           # 20 µL × 384 + 20 % excess
+      concentration: "Ready-to-use one-component TMB"
+      storage_temp_c: 4.0
+      hazard_class: none
+      notes: >
+        Light-sensitive; keep covered until dispensing.
+        Expected colour: colourless → blue (HRP activity) → yellow after stop.
+
+    - name: "Stop Solution (1 M H2SO4)"
+      volume_ul: 3000            # 5 µL × 384 + 20 % excess
+      concentration: "1 M sulphuric acid"
+      storage_temp_c: 25.0
+      hazard_class: corrosive
+      notes: >
+        CORROSIVE. Wear gloves, lab coat, and eye protection.
+        Add carefully to wells; do not splash. Converts blue → yellow signal.
+
+    - name: "Plate Sealant Film (adhesive, optically clear)"
+      volume_ul: 0
+      hazard_class: none
+      notes: "Optically clear for incubation steps that require sealing."
+
+# ── Consumables ───────────────────────────────────────────────────────────────
+consumables:
+  - name: "384-Well Flat-Bottom Microplate (MaxiSorp surface)"
+    quantity: 2
+    supplier: "Nunc"
+    catalog_number: "460372"
+    notes: >
+      High-binding polystyrene, flat-bottom clear. MaxiSorp treated for
+      optimal protein adsorption. Use 2 plates (384 wells each) if running
+      biological duplicates; 1 plate for single run.
+
+  - name: "Adhesive Plate Seals (optically clear)"
+    quantity: 8
+    supplier: "Thermo Scientific"
+    notes: "For incubation steps. Replace seal between each incubation step."
+
+  - name: "Opentrons 50 µL Tips (384-compatible, low-retention)"
+    quantity: 8
+    notes: "8 × 96-tip racks; 4 racks per plate for 4 quadrant passes."
+
+  - name: "Opentrons 200 µL Tips"
+    quantity: 4
+    notes: "For blocking buffer and wash top-up steps."
+
+  - name: "15 mL Reservoir Tubes"
+    quantity: 12
+    notes: "For capture Ab, detection Ab, streptavidin-HRP, TMB, stop solution."
+
+  - name: "96-Well Polypropylene Plate (V-bottom)"
+    quantity: 1
+    notes: "For standard curve serial dilution preparation."
+
+# ── Equipment ─────────────────────────────────────────────────────────────────
+equipment:
+  - name: opentrons
+    model: "Opentrons Flex (96-channel head, 4-quadrant 384-well operation)"
+    required: true
+
+  - name: plate_washer
+    model: "BioTek ELx405 Select 384 (or equivalent 384-well washer)"
+    required: true
+
+  - name: incubator
+    model: "Inheco ODTC (or equivalent plate incubator, 4°C and 37°C modes)"
+    required: true
+
+  - name: plate_reader
+    model: "Molecular Devices SpectraMax M5 (or equivalent, 450/630 nm)"
+    required: true
+
+  - name: vortex
+    model: "IKA Vortex 3 (plate adapter, low speed)"
+    required: false
+
+  - name: centrifuge
+    model: "Eppendorf 5430R with MTP rotor (plate centrifuge)"
+    required: false
+
+# ── Steps ─────────────────────────────────────────────────────────────────────
+steps:
+
+  # ── Stage 1: Plate preparation ───────────────────────────────────────────────
+  - id: 1
+    name: "Equilibrate reagents and plate to room temperature"
+    type: manual
+    params: {}
+    notes: >
+      Remove 384-well MaxiSorp plate, capture antibody, blocking buffer,
+      and PBS from cold storage. Allow all to equilibrate to 20–25°C for
+      30 minutes before starting. Label plate with experiment ID, date,
+      operator.
+
+  - id: 2
+    name: "Dilute capture antibody in Carbonate Coating Buffer"
+    type: manual
+    params: {}
+    notes: >
+      Prepare 12 mL capture antibody at 2 µg/mL in Carbonate Coating Buffer
+      (pH 9.6). Mix by gentle inversion. Do not vortex — antibody shear
+      degrades binding capacity.
+
+  - id: 3
+    name: "Coat plate: dispense capture antibody (20 µL/well, all 384 wells)"
+    type: pipette
+    params:
+      source: "reagent_reservoir_1"
+      destination: "elisa_plate_384"
+      volume_ul: 20
+      aspirate_rate: 30
+      dispense_rate: 30
+      tip_type: "50ul"
+      multi_dispense: true
+      quadrant_passes: 4       # 96-channel head: 4 passes (Q1–Q4)
+    notes: >
+      Dispense 20 µL capture antibody solution into each of the 384 wells.
+      Use 96-channel head in 4 quadrant passes. Dispense gently to avoid
+      bubbles — bubbles cause signal artefacts. Check all wells are filled.
+
+  - id: 4
+    name: "Seal plate and incubate overnight (4°C, coating)"
+    type: incubate
+    params:
+      temperature_c: 4
+      duration_s: 57600        # 16 hours overnight
+      humidity: true
+    notes: >
+      Seal with adhesive film. Incubate at 4°C overnight (14–18 h).
+      Alternatively, incubate at 37°C for 1 hour if same-day run required
+      (reduce sensitivity ~20 %). Do not stack plates.
+
+  # ── Stage 2: Wash + blocking ─────────────────────────────────────────────────
+  - id: 5
+    name: "Flick out coating solution"
+    type: manual
+    params: {}
+    notes: >
+      Remove plate from 4°C. Remove adhesive seal. Invert plate sharply
+      over waste trough to flick out coating solution. Blot firmly on
+      paper towels ×3. Do not let wells dry out — proceed immediately.
+
+  - id: 6
+    name: "Wash plate ×3 with PBST (plate washer, 80 µL/well)"
+    type: manual
+    params:
+      wash_cycles: 3
+      wash_volume_ul: 80
+      soak_time_s: 30
+      aspiration: "complete"
+    notes: >
+      Load plate into BioTek ELx405 384-well washer. Run 3 wash cycles:
+      dispense 80 µL PBST/well, soak 30 s, aspirate completely.
+      After final cycle, blot plate on paper towels. Thorough washing is
+      critical to reduce background.
+
+  - id: 7
+    name: "Add blocking buffer (80 µL/well, all 384 wells)"
+    type: pipette
+    params:
+      source: "reagent_reservoir_2"
+      destination: "elisa_plate_384"
+      volume_ul: 80
+      tip_type: "200ul"
+      multi_dispense: true
+      quadrant_passes: 4
+    notes: >
+      Dispense 80 µL of 1 % BSA-PBS blocking buffer into all 384 wells.
+      Filling to 80 µL helps cover the entire well surface during blocking.
+
+  - id: 8
+    name: "Seal and incubate blocking (1 h, room temperature)"
+    type: incubate
+    params:
+      temperature_c: 22
+      duration_s: 3600          # 1 hour
+      humidity: false
+    notes: >
+      Seal plate with fresh adhesive film. Incubate 1 h at room temperature
+      (20–25°C) on a level surface. Blocking prevents non-specific binding
+      of detection antibody to plate surface.
+
+  # ── Stage 3: Standard curve preparation ─────────────────────────────────────
+  - id: 9
+    name: "Reconstitute and prepare top standard stock"
+    type: manual
+    params: {}
+    notes: >
+      Reconstitute lyophilised recombinant standard in 500 µL Assay Diluent
+      to give 4000 pg/mL top standard. Allow to dissolve 10 min at RT.
+      Mix gently by pipetting up/down 10×. Do not vortex.
+
+  - id: 10
+    name: "Prepare 12-point serial dilution standard curve (2-fold)"
+    type: manual
+    params: {}
+    notes: >
+      Using a 96-well V-bottom plate as dilution vessel, prepare 12-point
+      2-fold serial dilution curve in Assay Diluent:
+        Std 1: 4000 pg/mL (top standard)
+        Std 2: 2000 pg/mL
+        Std 3: 1000 pg/mL
+        Std 4:  500 pg/mL
+        Std 5:  250 pg/mL
+        Std 6:  125 pg/mL
+        Std 7:   62.5 pg/mL
+        Std 8:   31.3 pg/mL
+        Std 9:   15.6 pg/mL
+        Std 10:   7.8 pg/mL
+        Std 11:   3.9 pg/mL
+        Std 12:   0 pg/mL (blank — Assay Diluent only)
+      Prepare 200 µL at each concentration (run in duplicate on ELISA plate).
+
+  - id: 11
+    name: "Prepare sample dilutions"
+    type: manual
+    params: {}
+    notes: >
+      Dilute unknown samples in Assay Diluent to bring into the assay
+      working range (15–4000 pg/mL). Typical starting dilution 1:2 to 1:10.
+      Prepare 50 µL diluted sample per well (run in duplicate).
+      Record dilution factors for back-calculation.
+
+  # ── Stage 4: Sample and standard incubation ───────────────────────────────────
+  - id: 12
+    name: "Aspirate blocking buffer from plate"
+    type: manual
+    params: {}
+    notes: >
+      Remove adhesive seal. Flick out blocking buffer over waste trough.
+      Blot firmly on paper towels ×3. Do not wash — proceed directly to
+      sample/standard addition.
+
+  - id: 13
+    name: "Wash plate ×1 with PBST (plate washer, 80 µL/well)"
+    type: manual
+    params:
+      wash_cycles: 1
+      wash_volume_ul: 80
+      soak_time_s: 0
+      aspiration: "complete"
+    notes: "Single quick wash to remove residual blocking buffer before sample addition."
+
+  - id: 14
+    name: "Add standard curve samples to designated wells (20 µL/well)"
+    type: pipette
+    params:
+      source: "standard_dilution_plate"
+      destination: "elisa_plate_384"
+      volume_ul: 20
+      new_tip: "always"
+      aspirate_rate: 20
+      dispense_rate: 20
+      tip_type: "50ul"
+    notes: >
+      Pipette 20 µL of each standard concentration into designated wells.
+      Standards run in duplicate. Dispense gently to avoid disturbing well
+      surface. Change tips between each standard concentration.
+
+  - id: 15
+    name: "Add unknown samples to designated wells (20 µL/well)"
+    type: pipette
+    params:
+      source: "sample_plate"
+      destination: "elisa_plate_384"
+      volume_ul: 20
+      new_tip: "always"
+      aspirate_rate: 20
+      dispense_rate: 20
+      tip_type: "50ul"
+    notes: >
+      Pipette 20 µL diluted sample per well. Run each sample in duplicate.
+      Change tips between each sample. Record plate map of standard and
+      sample positions before sealing.
+
+  - id: 16
+    name: "Seal and incubate plate with samples (2 h, room temperature)"
+    type: incubate
+    params:
+      temperature_c: 22
+      duration_s: 7200          # 2 hours
+      humidity: false
+    notes: >
+      Seal with fresh adhesive film. Incubate 2 h at RT on level surface.
+      Do not rock or shake — sample mixing causes carry-over between wells
+      in 384-well format. Target antigen binds to capture antibody.
+
+  # ── Stage 5: Detection antibody incubation ────────────────────────────────────
+  - id: 17
+    name: "Aspirate samples; wash plate ×3 with PBST (plate washer)"
+    type: manual
+    params:
+      wash_cycles: 3
+      wash_volume_ul: 80
+      soak_time_s: 30
+      aspiration: "complete"
+    notes: >
+      Remove adhesive seal. Load plate into BioTek ELx405 plate washer.
+      Run 3 wash cycles (80 µL PBST, 30 s soak, complete aspiration).
+      After final wash, blot plate on paper towels. Thorough washing removes
+      unbound sample and reduces background.
+
+  - id: 18
+    name: "Dilute detection antibody in Assay Diluent"
+    type: manual
+    params: {}
+    notes: >
+      Prepare 12 mL biotinylated detection antibody at 0.5 µg/mL in Assay
+      Diluent. Prepare during wash step. Mix by gentle inversion.
+      Protect from light. Discard unused diluted detection Ab after 24 h.
+
+  - id: 19
+    name: "Add detection antibody (20 µL/well, all 384 wells)"
+    type: pipette
+    params:
+      source: "reagent_reservoir_3"
+      destination: "elisa_plate_384"
+      volume_ul: 20
+      aspirate_rate: 25
+      dispense_rate: 25
+      tip_type: "50ul"
+      multi_dispense: true
+      quadrant_passes: 4
+    notes: >
+      Dispense 20 µL biotinylated detection antibody solution into all 384
+      wells. Protect from direct light during dispensing.
+
+  - id: 20
+    name: "Seal and incubate detection antibody (1 h, room temperature)"
+    type: incubate
+    params:
+      temperature_c: 22
+      duration_s: 3600          # 1 hour
+      humidity: false
+    notes: >
+      Seal plate. Incubate 1 h at RT in the dark (cover with foil or use
+      dark incubator). Detection antibody binds to captured antigen,
+      forming the sandwich complex.
+
+  # ── Stage 6: Streptavidin-HRP conjugate ──────────────────────────────────────
+  - id: 21
+    name: "Wash plate ×3 with PBST (plate washer)"
+    type: manual
+    params:
+      wash_cycles: 3
+      wash_volume_ul: 80
+      soak_time_s: 30
+      aspiration: "complete"
+    notes: >
+      Load plate into BioTek ELx405. Run 3 wash cycles to remove unbound
+      detection antibody. Blot firmly after final wash. Proceed immediately
+      to streptavidin-HRP addition — do not allow wells to dry.
+
+  - id: 22
+    name: "Dilute streptavidin-HRP conjugate (1:10,000 in Assay Diluent)"
+    type: manual
+    params: {}
+    notes: >
+      Prepare 12 mL streptavidin-HRP at 1:10,000 in Assay Diluent.
+      Prepare during wash step. Mix by gentle inversion — do NOT vortex.
+      Protect from light. Use immediately; diluted HRP loses activity.
+
+  - id: 23
+    name: "Add streptavidin-HRP (20 µL/well, all 384 wells)"
+    type: pipette
+    params:
+      source: "reagent_reservoir_4"
+      destination: "elisa_plate_384"
+      volume_ul: 20
+      aspirate_rate: 25
+      dispense_rate: 25
+      tip_type: "50ul"
+      multi_dispense: true
+      quadrant_passes: 4
+    notes: >
+      Dispense 20 µL streptavidin-HRP into all 384 wells. Keep plate
+      shielded from light throughout. Streptavidin binds biotin on
+      detection antibody with picomolar affinity.
+
+  - id: 24
+    name: "Seal and incubate streptavidin-HRP (30 min, room temperature, dark)"
+    type: incubate
+    params:
+      temperature_c: 22
+      duration_s: 1800          # 30 minutes
+      humidity: false
+    notes: >
+      Seal plate and cover with aluminium foil. Incubate 30 min at RT in
+      the dark. Do not over-incubate — non-specific HRP binding increases
+      with time.
+
+  # ── Stage 7: TMB substrate development ───────────────────────────────────────
+  - id: 25
+    name: "Wash plate ×5 with PBST (plate washer)"
+    type: manual
+    params:
+      wash_cycles: 5
+      wash_volume_ul: 80
+      soak_time_s: 30
+      aspiration: "complete"
+    notes: >
+      Load plate into BioTek ELx405. Run 5 wash cycles (80 µL PBST, 30 s soak,
+      complete aspiration). 5 washes before TMB are critical — residual HRP
+      in the wash causes high background. Blot firmly after final cycle.
+      Proceed within 2 min to TMB addition.
+
+  - id: 26
+    name: "Equilibrate TMB substrate to room temperature"
+    type: temperature_set
+    params:
+      temperature_c: 22
+      wait_for_temp: false
+    notes: >
+      Ensure TMB is at room temperature. Cold TMB develops more slowly and
+      gives lower signal. Remove from 4°C at least 30 min before use.
+      Visual check: TMB should be colourless (no pre-oxidation).
+
+  - id: 27
+    name: "Add TMB substrate (20 µL/well, all 384 wells)"
+    type: pipette
+    params:
+      source: "reagent_reservoir_5"
+      destination: "elisa_plate_384"
+      volume_ul: 20
+      aspirate_rate: 30
+      dispense_rate: 40
+      tip_type: "50ul"
+      multi_dispense: true
+      quadrant_passes: 4
+    notes: >
+      Dispense 20 µL TMB substrate per well. Complete all 384 wells as quickly
+      as possible — start timing after first well dispensed. Wells will turn
+      blue in proportion to bound HRP activity. Keep plate away from direct
+      light during development.
+
+  - id: 28
+    name: "Incubate TMB for colour development (10 min, room temperature, dark)"
+    type: wait
+    params:
+      duration_s: 600           # 10 minutes — adjust 5–20 min based on signal
+    notes: >
+      Allow TMB to develop for exactly 10 min at RT in the dark.
+      Monitor colour progression: high-concentration standards should be
+      dark blue; blank wells (Std 12) should remain nearly colourless.
+      Do NOT exceed 20 min — signal becomes non-linear.
+
+  # ── Stage 8: Stop and read ────────────────────────────────────────────────────
+  - id: 29
+    name: "Add stop solution (1 M H2SO4, 5 µL/well)"
+    type: pipette
+    params:
+      source: "reagent_reservoir_6"
+      destination: "elisa_plate_384"
+      volume_ul: 5
+      aspirate_rate: 20
+      dispense_rate: 30
+      tip_type: "50ul"
+      multi_dispense: true
+      quadrant_passes: 4
+    notes: >
+      CAUTION: 1 M H2SO4 is corrosive. Dispense 5 µL stop solution per well.
+      Complete all 384 wells in the same order and speed as TMB addition to
+      ensure equal development time across the plate. Wells will turn from
+      blue to yellow immediately upon stop solution contact.
+
+  - id: 30
+    name: "Shake plate briefly to ensure complete colour change"
+    type: vortex
+    params:
+      rpm: 400
+      duration_s: 15
+      tube_position: null
+    notes: >
+      Gentle shake (400 rpm, 15 s) ensures homogeneous mixing of stop solution
+      in each well. Verify all blue wells have turned fully yellow.
+      Any remaining blue wells indicate incomplete stop — dispense additional
+      1–2 µL H2SO4 and re-check.
+
+  - id: 31
+    name: "Remove bubbles by brief centrifugation"
+    type: centrifuge
+    params:
+      rpm: 200
+      duration_s: 30
+      temp_c: 22
+    notes: >
+      Low-speed spin (200 rpm, 30 s) removes surface bubbles that interfere
+      with optical measurements. Check plate for bubbles before reading.
+
+  - id: 32
+    name: "Read absorbance at 450 nm (and 630 nm reference)"
+    type: manual
+    params: {}
+    notes: >
+      Read plate on SpectraMax M5 (or equivalent) within 30 min of adding
+      stop solution — signal degrades over time.
+        Primary wavelength: 450 nm (TMB-H2SO4 yellow product)
+        Reference wavelength: 630 nm (correct for optical plate artefacts)
+        Corrected OD = OD450 – OD630
+      Export raw data as CSV. Expected OD450 range: 0.05 (blank) – 3.5 (top std).
+
+  # ── Stage 9: Data analysis and QC ────────────────────────────────────────────
+  - id: 33
+    name: "Validate standard curve quality"
+    type: comment
+    params: {}
+    notes: >
+      QC criteria for a valid standard curve:
+        - R² ≥ 0.998 (4-parameter logistic, 4PL curve fit)
+        - Top standard (4000 pg/mL) OD450 ≥ 1.5
+        - Blank (0 pg/mL) OD450 ≤ 0.15
+        - Intra-assay CV of duplicate standards ≤ 10 %
+        - Recovery of controls within 80–120 %
+      Reject assay and repeat if any criterion fails.
+
+  - id: 34
+    name: "Back-calculate sample concentrations"
+    type: comment
+    params: {}
+    notes: >
+      Apply 4PL curve fit (SoftMax Pro, GraphPad Prism, or equivalent) to
+      standard curve. Read off sample concentrations from corrected OD values.
+      Multiply by dilution factor to obtain original sample concentration.
+      Flag samples outside the assay range for re-dilution and re-testing.
+
+  - id: 35
+    name: "Calculate intra- and inter-assay statistics"
+    type: comment
+    params: {}
+    notes: >
+      For each sample (duplicate wells):
+        Mean OD, SD, CV (%) — flag if CV > 15 %
+      For each standard concentration:
+        Mean OD, % Recovery vs theoretical
+      Report: mean concentration ± SD (pg/mL), n = duplicate.
+
+  - id: 36
+    name: "Seal used plate, dispose of waste, log results"
+    type: manual
+    params: {}
+    notes: >
+      Seal ELISA plate with adhesive film (for archival, if required).
+      Dispose of PBST/H2SO4 waste per institutional chemical waste guidelines.
+      Log experiment ID, plate ID, standard curve parameters (ED50, Hill slope,
+      R²), sample concentrations, and QC metrics in ELN/LIMS.
+      Archive raw data CSV and plate map file.
+
+  - id: 37
+    name: "Log experiment results"
+    type: comment
+    params: {}
+    notes: >
+      384-Well Sandwich ELISA complete.
+      37 steps executed. Plate processed, data acquired, and QC reviewed.
+      Results ready for statistical analysis and reporting.
+
+# ── Safety notes ───────────────────────────────────────────────────────────────
+safety_notes:
+  - "BSL1 protocol. Standard PPE required: nitrile gloves, lab coat, and eye protection throughout."
+  - "Stop Solution (1 M H2SO4) is CORROSIVE. Handle with care; avoid contact with skin and eyes. In case of contact, rinse immediately with copious water."
+  - "TMB substrate contains organic solvents — avoid prolonged skin contact. Work in well-ventilated area."
+  - "Dispose of all liquid waste (PBST, H2SO4, TMB waste) per institutional chemical waste disposal policy."
+  - "Plate-washer aspiration waste contains residual H2SO4 and SDS — collect separately from biological waste."
+  - "If working with patient samples (human-derived), apply appropriate biosafety precautions per institutional guidelines."
+  - "BioTek plate washer: ensure tubing is primed and aspiration is complete before each use to prevent cross-contamination."
+  - "All reagents containing BSA or protein components: dispose as biological waste, not chemical waste."

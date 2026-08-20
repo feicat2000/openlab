@@ -1,0 +1,374 @@
+# ──────────────────────────────────────────────────────────────────────────────
+#  OpenLab Example Protocol – DNA Extraction from Blood (Magnetic Bead Method)
+#  Ref: QIAGEN QIAamp DNA Blood Mini Kit procedure (adapted for automation)
+# ──────────────────────────────────────────────────────────────────────────────
+
+metadata:
+  name: "DNA Extraction from Blood – Magnetic Bead"
+  version: "1.0"
+  author: "OpenLab Team"
+  description: >
+    Automated DNA extraction from 200µL whole blood using magnetic beads.
+    Includes lysis, binding, washing, and elution steps.
+    Expected yield: 3–8µg genomic DNA. Purity A260/A280 ≥ 1.8
+  safety_level: BSL2
+  created_at: "2026-02-28"
+
+materials:
+  reagents:
+    - name: "AL Lysis Buffer"
+      volume_ul: 400        # 200µL × 2 samples + dead volume
+      storage_temp_c: 25
+      hazard_class: irritant
+      notes: "Contains guanidinium – denatures proteins. Wear gloves."
+
+    - name: "Proteinase K (20 mg/mL)"
+      volume_ul: 40
+      concentration: "20 mg/mL"
+      storage_temp_c: -20
+      hazard_class: irritant
+      notes: "Aliquot and store at -20°C. Thaw on ice."
+
+    - name: "Ethanol (96-100%)"
+      volume_ul: 450
+      storage_temp_c: 25
+      hazard_class: flammable
+      cas_number: "64-17-5"
+      notes: "Anhydrous. Keep away from ignition sources."
+
+    - name: "AW1 Wash Buffer"
+      volume_ul: 1000
+      storage_temp_c: 25
+      hazard_class: irritant
+
+    - name: "AW2 Wash Buffer"
+      volume_ul: 700
+      storage_temp_c: 25
+      hazard_class: irritant
+
+    - name: "AE Elution Buffer (10 mM Tris-HCl pH 9)"
+      volume_ul: 220
+      storage_temp_c: 25
+      hazard_class: none
+      notes: "Warm to 70°C before elution for higher yield."
+
+    - name: "Magnetic Beads (Sera-Mag SpeedBeads)"
+      volume_ul: 25
+      storage_temp_c: 4
+      hazard_class: none
+      notes: "Vortex thoroughly before use. Keep on ice."
+
+    - name: "Whole Blood Sample"
+      volume_ul: 200
+      storage_temp_c: 4
+      hazard_class: biohazard
+      notes: "Assume BSL2. Handle in biosafety cabinet for aerosol steps."
+
+consumables:
+  - name: "1.5mL Eppendorf SafeLock tubes"
+    quantity: 8
+    supplier: "Eppendorf"
+    catalog_number: "022363204"
+
+  - name: "200µL barrier tips"
+    quantity: 40
+    supplier: "Opentrons"
+    catalog_number: "999-00001"
+
+  - name: "20µL barrier tips"
+    quantity: 16
+    supplier: "Opentrons"
+    catalog_number: "999-00002"
+
+  - name: "Nitrile gloves (M)"
+    quantity: 2
+    notes: "pairs"
+
+  - name: "1.5mL Collection tubes"
+    quantity: 4
+    supplier: "Eppendorf"
+
+equipment:
+  - name: opentrons
+    model: OT-2
+    required: true
+
+  - name: robotic_arm
+    model: UR3e
+    required: true
+
+  - name: vortex
+    model: IKA Vortex 3
+    required: true
+
+  - name: centrifuge
+    model: Eppendorf 5430R
+    required: true
+
+  - name: incubator
+    model: Inheco ODTC
+    required: true
+
+  - name: magnetic_separator
+    model: Alpaqua Magnum FLX
+    required: true
+
+steps:
+
+  # ── Step 1: Sample + Proteinase K ─────────────────────────────────────────
+  - id: 1
+    name: "Pipette blood sample into lysis tube"
+    type: pipette
+    params:
+      source: "tube_rack:A1"          # sample tube on OT deck
+      destination: "tube_rack:B1"     # lysis tube
+      volume_ul: 200
+      mix_repetitions: 0
+    notes: "Use barrier tips. Discard tip after transfer."
+
+  - id: 2
+    name: "Add Proteinase K"
+    type: pipette
+    params:
+      source: "tube_rack:C1"
+      destination: "tube_rack:B1"
+      volume_ul: 20
+      mix_repetitions: 3
+      mix_volume_ul: 100
+
+  # ── Step 2: Add lysis buffer ───────────────────────────────────────────────
+  - id: 3
+    name: "Add AL Lysis Buffer"
+    type: pipette
+    params:
+      source: "reservoir:A1"
+      destination: "tube_rack:B1"
+      volume_ul: 200
+      mix_repetitions: 0
+    notes: "Do not vortex with lysis buffer – risk of aerosol."
+
+  - id: 4
+    name: "Pulse vortex lysis mixture"
+    type: vortex
+    params:
+      rpm: 2500
+      duration_s: 15
+      tube_position: [0.420, -0.080, 0.310, 3.14159, 0.0, 0.0]
+    notes: "Pulse 5×3s for thorough mixing."
+
+  # ── Step 3: Incubate for lysis ─────────────────────────────────────────────
+  - id: 5
+    name: "Incubate at 56°C for 10 minutes"
+    type: incubate
+    params:
+      temperature_c: 56
+      duration_s: 600
+      shake_rpm: 300
+      tube_position: [0.420, -0.080, 0.310, 3.14159, 0.0, 0.0]
+    notes: "Mixing at 300 rpm prevents bead settling."
+
+  # ── Step 4: Add ethanol ────────────────────────────────────────────────────
+  - id: 6
+    name: "Add ethanol (96%)"
+    type: pipette
+    params:
+      source: "reservoir:A2"
+      destination: "tube_rack:B1"
+      volume_ul: 200
+      mix_repetitions: 0
+    notes: "Add immediately after lysis. Do not delay."
+
+  - id: 7
+    name: "Vortex ethanol mixture"
+    type: vortex
+    params:
+      rpm: 2000
+      duration_s: 30
+      tube_position: [0.420, -0.080, 0.310, 3.14159, 0.0, 0.0]
+
+  # ── Step 5: Bind DNA to magnetic beads ─────────────────────────────────────
+  - id: 8
+    name: "Add magnetic beads"
+    type: pipette
+    params:
+      source: "tube_rack:D1"          # pre-mixed bead suspension
+      destination: "tube_rack:B1"
+      volume_ul: 20
+      mix_repetitions: 5
+      mix_volume_ul: 200
+    notes: "Vortex bead stock before aspirating."
+
+  - id: 9
+    name: "Incubate with beads (binding)"
+    type: incubate
+    params:
+      temperature_c: 25
+      duration_s: 600
+      shake_rpm: 800
+      tube_position: [0.420, -0.080, 0.310, 3.14159, 0.0, 0.0]
+
+  # ── Step 6: Magnetic separation ────────────────────────────────────────────
+  - id: 10
+    name: "Magnetic separation – pellet beads"
+    type: magnetic_sep
+    params:
+      duration_s: 120
+    notes: "Wait for solution to clear completely (~2 min)."
+
+  - id: 11
+    name: "Remove supernatant (discard)"
+    type: pipette
+    params:
+      source: "tube_rack:B1"
+      destination: "waste_reservoir:A1"
+      volume_ul: 440
+    notes: "Aspirate slowly near magnet side. Do not disturb pellet."
+
+  # ── Step 7: Wash 1 (AW1) ──────────────────────────────────────────────────
+  - id: 12
+    name: "Disengage magnet"
+    type: comment
+    notes: "MagneticSeparator.disengage() called automatically after pipette step."
+
+  - id: 13
+    name: "Add AW1 Wash Buffer"
+    type: pipette
+    params:
+      source: "reservoir:A3"
+      destination: "tube_rack:B1"
+      volume_ul: 500
+      mix_repetitions: 0
+
+  - id: 14
+    name: "Vortex wash 1"
+    type: vortex
+    params:
+      rpm: 2000
+      duration_s: 15
+      tube_position: [0.420, -0.080, 0.310, 3.14159, 0.0, 0.0]
+
+  - id: 15
+    name: "Centrifuge wash 1"
+    type: centrifuge
+    params:
+      rpm: 8000
+      duration_s: 60
+      temp_c: 25
+      tube_position: [0.420, -0.080, 0.310, 3.14159, 0.0, 0.0]
+
+  - id: 16
+    name: "Discard wash 1 supernatant"
+    type: pipette
+    params:
+      source: "tube_rack:B1"
+      destination: "waste_reservoir:A1"
+      volume_ul: 500
+
+  # ── Step 8: Wash 2 (AW2) ──────────────────────────────────────────────────
+  - id: 17
+    name: "Add AW2 Wash Buffer"
+    type: pipette
+    params:
+      source: "reservoir:A4"
+      destination: "tube_rack:B1"
+      volume_ul: 500
+      mix_repetitions: 0
+
+  - id: 18
+    name: "Centrifuge wash 2"
+    type: centrifuge
+    params:
+      rpm: 13000
+      duration_s: 180
+      temp_c: 25
+      tube_position: [0.420, -0.080, 0.310, 3.14159, 0.0, 0.0]
+
+  - id: 19
+    name: "Discard wash 2 supernatant"
+    type: pipette
+    params:
+      source: "tube_rack:B1"
+      destination: "waste_reservoir:A1"
+      volume_ul: 500
+
+  # ── Step 9: Dry beads ──────────────────────────────────────────────────────
+  - id: 20
+    name: "Dry beads at 65°C"
+    type: incubate
+    params:
+      temperature_c: 65
+      duration_s: 120
+      shake_rpm: 0
+      tube_position: [0.420, -0.080, 0.310, 3.14159, 0.0, 0.0]
+    notes: "Open cap – do not over-dry (max 5 min). Cap loosened by arm first."
+
+  - id: 21
+    name: "Loosen cap for drying"
+    type: loosen_cap
+    params:
+      tube_position: [0.420, -0.080, 0.310, 3.14159, 0.0, 0.0]
+
+  # ── Step 10: Elution ──────────────────────────────────────────────────────
+  - id: 22
+    name: "Tighten cap after drying"
+    type: tighten_cap
+    params:
+      tube_position: [0.420, -0.080, 0.310, 3.14159, 0.0, 0.0]
+
+  - id: 23
+    name: "Add pre-warmed Elution Buffer"
+    type: pipette
+    params:
+      source: "reservoir:A5"          # AE buffer pre-warmed to 70°C
+      destination: "tube_rack:B1"
+      volume_ul: 100
+      mix_repetitions: 0
+
+  - id: 24
+    name: "Incubate for elution"
+    type: incubate
+    params:
+      temperature_c: 70
+      duration_s: 600
+      shake_rpm: 0
+      tube_position: [0.420, -0.080, 0.310, 3.14159, 0.0, 0.0]
+
+  - id: 25
+    name: "Invert tube 10x to resuspend beads"
+    type: invert_tube
+    params:
+      tube_position: [0.420, -0.080, 0.310, 3.14159, 0.0, 0.0]
+      n_times: 10
+
+  - id: 26
+    name: "Final magnetic separation – collect eluate"
+    type: magnetic_sep
+    params:
+      duration_s: 120
+
+  - id: 27
+    name: "Collect purified DNA into elution tube"
+    type: pipette
+    params:
+      source: "tube_rack:B1"
+      destination: "tube_rack:E1"     # clean collection tube
+      volume_ul: 100
+      mix_repetitions: 0
+    notes: "Purified DNA. Store at -20°C."
+
+  - id: 28
+    name: "Protocol complete – store sample"
+    type: comment
+    notes: >
+      DNA extraction complete. Place tube E1 on ice immediately.
+      Measure purity on Nanodrop before storing at -20°C.
+      Expected: OD260/280 ≥ 1.8, OD260/230 ≥ 2.0
+
+safety_notes:
+  - "Whole blood is a BSL2 biohazard. Work in certified biosafety cabinet for aerosol-generating steps."
+  - "AL Lysis Buffer contains guanidinium salts – denatures proteins. Avoid mixing with bleach (releases HCN)."
+  - "Ethanol is flammable. No naked flames in the lab during protocol."
+  - "Centrifuge must be loaded in balanced pairs to prevent rotor damage."
+  - "Robotic arm speed is limited to 250 mm/s in shared workspace (ISO/TS 15066)."
+  - "All liquid waste from blood processing must be autoclaved (121°C, 20 min) before disposal."
+  - "Wear: lab coat, nitrile gloves (double for blood steps), eye protection."

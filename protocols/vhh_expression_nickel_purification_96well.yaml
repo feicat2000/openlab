@@ -1,0 +1,751 @@
+metadata:
+  name: "96-Well VHH Inoculation, Expression, Lysis & Ni-NTA Purification"
+  version: "1.0"
+  author: "OpenLab"
+  description: >
+    Full end-to-end pipeline for 96-well parallel VHH (nanobody) production:
+    (1) Pre-culture inoculation from glycerol stocks or colony picks,
+    (2) overnight growth in TB medium,
+    (3) expression culture setup in fresh medium,
+    (4) IPTG induction at 25°C,
+    (5) cell harvest by centrifugation,
+    (6) chemical lysis with lysozyme + BugBuster,
+    (7) lysate clarification,
+    (8) batch Ni-NTA magnetic bead purification (bind → wash × 3 → elute),
+    (9) eluate collection and QC.
+    Compatible with pHEN2, pADL-23c, pET-22b(+) or any vector driving
+    periplasmic/cytoplasmic His6-tagged VHH expression in E. coli BL21(DE3)
+    or HB2151. Expected yield: 0.1–5 µg/well purified VHH.
+  safety_level: BSL1
+  created_at: "2026-02-28"
+
+# ── Materials ─────────────────────────────────────────────────────────────────
+materials:
+  reagents:
+    - name: "Terrific Broth (TB) + antibiotic (pre-culture)"
+      volume_ul: 120000         # 1.2 mL × 96 wells (pre-culture)
+      concentration: "TB: 12 g/L tryptone, 24 g/L yeast extract, 4 mL/L glycerol; Amp 100 µg/mL"
+      storage_temp_c: 4.0
+      hazard_class: none
+      notes: "Autoclave TB, then cool to RT before adding filter-sterilised ampicillin."
+
+    - name: "Terrific Broth (TB) + antibiotic (expression)"
+      volume_ul: 480000         # 5 mL × 96 wells (expression) — stock for multi-dispense
+      concentration: "TB + Amp 100 µg/mL + 0.1% glucose (catabolite repression)"
+      storage_temp_c: 4.0
+      hazard_class: none
+      notes: "Glucose suppresses leaky expression before induction."
+
+    - name: "IPTG Stock (1 M, filter-sterilised)"
+      volume_ul: 500            # 5 µL → 1 mM final in 5 mL expression culture
+      concentration: "1 M in nuclease-free water"
+      storage_temp_c: -20.0
+      hazard_class: none
+      notes: "IPTG is a non-metabolisable lactose analogue. Thaw on ice before use."
+
+    - name: "BugBuster Protein Extraction Reagent (10×)"
+      volume_ul: 20000          # 200 µL/well × 96 wells (lysis)
+      concentration: "10× concentrated — dilute to 1× with PBS"
+      storage_temp_c: 25.0
+      hazard_class: none
+      notes: "Non-ionic detergent blend for efficient cell lysis without heat."
+
+    - name: "Lysozyme (10 mg/mL stock)"
+      volume_ul: 960            # 10 µL/well × 96 wells
+      concentration: "10 mg/mL in PBS → 250 µg/mL final in lysis volume"
+      storage_temp_c: -20.0
+      hazard_class: none
+      notes: "Cleaves peptidoglycan cell wall. Thaw on ice. Add freshly to lysis buffer."
+
+    - name: "DNase I (1 mg/mL stock)"
+      volume_ul: 960            # 10 µL/well × 96 wells
+      concentration: "1 mg/mL in PBS + 5 mM MgCl2 → 25 µg/mL final"
+      storage_temp_c: -20.0
+      hazard_class: none
+      notes: "Reduces lysate viscosity. Requires Mg2+. Add freshly to lysis buffer."
+
+    - name: "Ni-NTA Magnetic Beads (pre-equilibrated)"
+      volume_ul: 5000           # ~50 µL settled beads/well — supplied as 50% slurry
+      concentration: "50% slurry in PBS + 20 mM imidazole"
+      storage_temp_c: 4.0
+      hazard_class: none
+      notes: "Qiagen MagneHis or equivalent. Equilibrate in Binding Buffer before use."
+
+    - name: "Binding Buffer (IMAC)"
+      volume_ul: 20000          # 200 µL/well × 96 wells
+      concentration: "50 mM NaH2PO4, 300 mM NaCl, 10 mM imidazole, pH 8.0"
+      storage_temp_c: 25.0
+      hazard_class: none
+      notes: "Filter-sterilise. Low imidazole (10 mM) allows His-tag binding."
+
+    - name: "Wash Buffer 1 (IMAC, low imidazole)"
+      volume_ul: 30000          # 300 µL/well × 96 wells (two washes)
+      concentration: "50 mM NaH2PO4, 300 mM NaCl, 20 mM imidazole, pH 8.0"
+      storage_temp_c: 25.0
+      hazard_class: none
+      notes: "Removes non-specifically bound contaminants. 20 mM imidazole discriminates."
+
+    - name: "Wash Buffer 2 (IMAC, mid imidazole)"
+      volume_ul: 15000          # 150 µL/well × 96 wells (one wash)
+      concentration: "50 mM NaH2PO4, 300 mM NaCl, 50 mM imidazole, pH 8.0"
+      storage_temp_c: 25.0
+      hazard_class: none
+      notes: "Second wash removes weakly bound histidine-rich contaminants."
+
+    - name: "Elution Buffer (IMAC, high imidazole)"
+      volume_ul: 15000          # 150 µL × 96 wells
+      concentration: "50 mM NaH2PO4, 300 mM NaCl, 250 mM imidazole, pH 8.0"
+      storage_temp_c: 25.0
+      hazard_class: none
+      notes: "High imidazole competitively displaces His-tagged VHH from Ni2+."
+
+    - name: "PBS (1×, pH 7.4)"
+      volume_ul: 50000
+      concentration: "137 mM NaCl, 2.7 mM KCl, 10 mM Na2HPO4, 1.8 mM KH2PO4"
+      storage_temp_c: 25.0
+      hazard_class: none
+      notes: "For bead equilibration, washes, and dilutions."
+
+    - name: "Ampicillin (100 mg/mL stock)"
+      volume_ul: 600
+      concentration: "100 mg/mL in water, filter-sterilised"
+      storage_temp_c: -20.0
+      hazard_class: none
+      notes: "Selection antibiotic. Add at 1:1000 (100 µg/mL final)."
+
+# ── Consumables ───────────────────────────────────────────────────────────────
+consumables:
+  - name: "96 Deep-Well Block (2.2 mL, square-well) – pre-culture"
+    quantity: 1
+    supplier: "Eppendorf"
+    catalog_number: "0030502358"
+    notes: "Inoculation/pre-culture block."
+
+  - name: "96 Deep-Well Block (2.2 mL, square-well) – expression"
+    quantity: 1
+    supplier: "Eppendorf"
+    notes: "Expression block — receives transferred pre-culture."
+
+  - name: "96 Deep-Well Block (2.2 mL, square-well) – lysis/IMAC"
+    quantity: 2
+    supplier: "Eppendorf"
+    notes: "Lysis block and IMAC magnetic bead block."
+
+  - name: "Breathable Adhesive Seals (AeraSeal)"
+    quantity: 4
+    supplier: "Excel Scientific"
+    notes: "Gas-permeable seals for aerobic growth during incubation."
+
+  - name: "Pierceable Foil Seal"
+    quantity: 4
+    notes: "For centrifuge steps."
+
+  - name: "96-Well Collection Microplate (V-bottom, 0.5 mL)"
+    quantity: 2
+    supplier: "Greiner"
+    notes: "For elution fractions and intermediate collection."
+
+  - name: "Opentrons 300 µL Tips"
+    quantity: 5
+    notes: "5 × 96-tip racks for liquid handling steps."
+
+  - name: "Opentrons 1000 µL Tips"
+    quantity: 3
+    notes: "For large-volume media and buffer additions."
+
+# ── Equipment ──────────────────────────────────────────────────────────────────
+equipment:
+  - name: opentrons
+    model: "Opentrons Flex (96-channel head or 8-channel P300)"
+    required: true
+
+  - name: centrifuge
+    model: "Eppendorf 5430R with MTP rotor (96-well adapter)"
+    required: true
+
+  - name: incubator
+    model: "Inheco ODTC thermomixer (or equivalent shaking incubator)"
+    required: true
+
+  - name: vortex
+    model: "IKA Vortex 3 with plate adapter"
+    required: true
+
+  - name: magnetic_separator
+    model: "Alpaqua Magnum FLX 96-well magnetic separator"
+    required: true
+
+# ── Steps ──────────────────────────────────────────────────────────────────────
+steps:
+
+  # ══════════════════════════════════════════════════════════════
+  # STAGE 1 – PRE-CULTURE INOCULATION
+  # ══════════════════════════════════════════════════════════════
+
+  - id: 1
+    name: "Dispense TB pre-culture medium into deep-well block"
+    type: pipette
+    params:
+      source: "reagent_reservoir_tb_preculture"
+      destination: "deep_well_block_preculture"
+      volume_ul: 1000
+      tip_type: "1000ul"
+      multi_dispense: true
+      new_tip: "once"
+    notes: "1 mL TB + Amp 100 µg/mL per well. Use multi-dispense to conserve tips."
+
+  - id: 2
+    name: "Inoculate from glycerol stocks or colony picks"
+    type: manual
+    params: {}
+    notes: >
+      Using a 96-pin replicator or multichannel pipette, inoculate each well
+      from the corresponding glycerol stock (−80°C master plate) or fresh
+      colony pick. Each VHH clone should correspond to a unique well.
+      Work quickly on ice.
+
+  - id: 3
+    name: "Seal pre-culture plate with breathable AeraSeal"
+    type: manual
+    params: {}
+    notes: "Press firmly over entire plate. Gas-permeable seal is essential for aerobic growth."
+
+  - id: 4
+    name: "Pre-culture overnight: 37°C, 900 rpm, 16 h"
+    type: incubate
+    params:
+      temperature_c: 37
+      duration_s: 57600          # 16 hours
+      shake_rpm: 900
+    notes: >
+      Cultures should reach saturation (OD600 > 2.0) by morning.
+      High shaking (900 rpm) essential in deep-well format for oxygenation.
+
+  # ══════════════════════════════════════════════════════════════
+  # STAGE 2 – EXPRESSION CULTURE SETUP
+  # ══════════════════════════════════════════════════════════════
+
+  - id: 5
+    name: "Dispense fresh TB expression medium"
+    type: pipette
+    params:
+      source: "reagent_reservoir_tb_expression"
+      destination: "deep_well_block_expression"
+      volume_ul: 900
+      tip_type: "1000ul"
+      multi_dispense: true
+      new_tip: "once"
+    notes: "900 µL TB + Amp + 0.1% glucose per well in fresh expression block."
+
+  - id: 6
+    name: "Transfer pre-culture inoculum (1:10 dilution)"
+    type: pipette
+    params:
+      source: "deep_well_block_preculture"
+      destination: "deep_well_block_expression"
+      volume_ul: 100
+      tip_type: "300ul"
+      new_tip: "always"
+      mix_repetitions: 3
+      mix_volume_ul: 80
+    notes: >
+      100 µL overnight pre-culture → 900 µL fresh TB = 1:10 sub-culture.
+      New tip per well to prevent cross-contamination between VHH clones.
+
+  - id: 7
+    name: "Seal expression block with breathable seal"
+    type: manual
+    params: {}
+    notes: "AeraSeal only. Do not use foil — cultures must breathe during growth."
+
+  - id: 8
+    name: "Grow expression culture to mid-log: 37°C, 900 rpm, 2.5 h"
+    type: incubate
+    params:
+      temperature_c: 37
+      duration_s: 9000           # 2.5 hours → target OD600 0.6–0.8
+      shake_rpm: 900
+    notes: >
+      Target OD600 = 0.6–0.8 for optimal IPTG induction competency.
+      Time may vary ±30 min depending on strain and pre-culture density.
+
+  # ══════════════════════════════════════════════════════════════
+  # STAGE 3 – IPTG INDUCTION
+  # ══════════════════════════════════════════════════════════════
+
+  - id: 9
+    name: "Cool expression cultures to 25°C"
+    type: temperature_set
+    params:
+      temperature_c: 25
+      wait_for_temp: true
+    notes: >
+      Reducing temperature to 25°C before induction promotes correct VHH
+      folding and disulfide bond formation in the periplasm. Critical for yield.
+
+  - id: 10
+    name: "Add IPTG to each well (1 mM final concentration)"
+    type: pipette
+    params:
+      source: "reagent_reservoir_iptg"
+      destination: "deep_well_block_expression"
+      volume_ul: 5               # 5 µL of 1 M IPTG → 1 mM final in ~1 mL
+      tip_type: "300ul"
+      new_tip: "once"
+      multi_dispense: true
+      mix_repetitions: 3
+      mix_volume_ul: 50
+    notes: >
+      1 mM IPTG is standard for strong T7/tac promoter induction.
+      For lower-copy vectors, 0.5 mM IPTG may reduce metabolic burden.
+
+  - id: 11
+    name: "Re-seal with breathable seal"
+    type: manual
+    params: {}
+    notes: "Replace seal if disturbed during IPTG addition."
+
+  - id: 12
+    name: "VHH expression: 25°C, 800 rpm, 16 h (overnight)"
+    type: incubate
+    params:
+      temperature_c: 25
+      duration_s: 57600          # 16 hours
+      shake_rpm: 800
+    notes: >
+      Overnight expression at 25°C balances yield with solubility.
+      Alternative: 4 h at 30°C (reduced yield, faster turnaround).
+      Medium should appear turbid and slightly viscous by morning.
+
+  # ══════════════════════════════════════════════════════════════
+  # STAGE 4 – CELL HARVEST / PELLETING
+  # ══════════════════════════════════════════════════════════════
+
+  - id: 13
+    name: "Seal expression block with pierceable foil for centrifugation"
+    type: manual
+    params: {}
+    notes: "Remove breathable seal. Apply foil seal tightly. Balance against counterweight block."
+
+  - id: 14
+    name: "Centrifuge – harvest cells (pellet expression culture)"
+    type: centrifuge
+    params:
+      rpm: 4000
+      duration_s: 1200           # 20 min at 4000 rpm (≈ 2700 × g)
+      temp_c: 4
+    notes: >
+      4°C centrifugation preserves protein stability.
+      Pellets should be compact and pale yellow-beige (E. coli mass).
+
+  - id: 15
+    name: "Decant / aspirate expression medium (supernatant)"
+    type: pipette
+    params:
+      source: "deep_well_block_expression"
+      destination: "waste_reservoir"
+      volume_ul: 850
+      aspirate_rate: 30          # slow aspiration to avoid disturbing pellet
+      tip_type: "1000ul"
+      new_tip: "always"
+    notes: >
+      Aspirate 850 µL of ~900 µL supernatant carefully.
+      Leave ≈50 µL to avoid disturbing the cell pellet.
+      Discard supernatant (contains residual IPTG and spent medium).
+
+  - id: 16
+    name: "Quick-freeze pellets at −80°C (optional — improves lysis)"
+    type: manual
+    params: {}
+    notes: >
+      OPTIONAL but recommended: seal plate with foil and freeze at −80°C for
+      ≥ 30 min. Freeze-thaw cycles disrupt the outer membrane and dramatically
+      improve BugBuster lysis efficiency. Can proceed directly if time-limited.
+
+  # ══════════════════════════════════════════════════════════════
+  # STAGE 5 – CHEMICAL LYSIS
+  # ══════════════════════════════════════════════════════════════
+
+  - id: 17
+    name: "Prepare lysis master mix (BugBuster + Lysozyme + DNase I)"
+    type: comment
+    params: {}
+    notes: >
+      Prepare lysis master mix immediately before use (prepare in a 50 mL falcon):
+        Per well: 190 µL 1× BugBuster + 10 µL lysozyme (10 mg/mL) + 10 µL DNase I (1 mg/mL).
+        For 96 wells (+ 10% excess): prepare 20 mL 1× BugBuster + 1.05 mL lysozyme + 1.05 mL DNase.
+      Keep on ice. Use within 30 min of preparation.
+
+  - id: 18
+    name: "Add lysis buffer (BugBuster + Lysozyme + DNase I) to pellets"
+    type: pipette
+    params:
+      source: "reagent_reservoir_lysis"
+      destination: "deep_well_block_expression"
+      volume_ul: 200
+      tip_type: "300ul"
+      new_tip: "once"
+      multi_dispense: true
+    notes: >
+      200 µL lysis buffer per well directly onto the cell pellet.
+      BugBuster disrupts membranes; lysozyme cleaves peptidoglycan;
+      DNase reduces viscosity from released chromosomal DNA.
+
+  - id: 19
+    name: "Vortex to resuspend pellets in lysis buffer"
+    type: vortex
+    params:
+      rpm: 1200
+      duration_s: 120            # 2 min
+    notes: "Medium-speed vortex with plate adapter to ensure full pellet resuspension."
+
+  - id: 20
+    name: "Lysis incubation: RT (25°C), 600 rpm, 30 min"
+    type: incubate
+    params:
+      temperature_c: 25
+      duration_s: 1800           # 30 min
+      shake_rpm: 600
+    notes: >
+      Shaking during lysis is essential for efficient BugBuster action.
+      Lysate will become more viscous initially (DNA release) then clear
+      as DNase digests chromosomal DNA. Do not exceed 37°C (protease activation).
+
+  - id: 21
+    name: "Seal lysis plate and centrifuge – clarify lysate"
+    type: centrifuge
+    params:
+      rpm: 5600
+      duration_s: 1800           # 30 min at 5600 rpm (≈ 4500 × g)
+      temp_c: 4
+    notes: >
+      4°C centrifugation prevents protease-mediated degradation.
+      Pellet contains cell debris, membranes, and inclusion bodies.
+      Supernatant (soluble fraction) contains His6-VHH.
+
+  # ══════════════════════════════════════════════════════════════
+  # STAGE 6 – Ni-NTA MAGNETIC BEAD PURIFICATION
+  # ══════════════════════════════════════════════════════════════
+
+  - id: 22
+    name: "Equilibrate Ni-NTA magnetic beads in Binding Buffer"
+    type: comment
+    params: {}
+    notes: >
+      Before use: place bead stock on magnetic separator for 2 min.
+      Remove storage buffer. Resuspend beads in Binding Buffer (3× bead volume).
+      Repeat × 2. Prepare as 50% slurry in Binding Buffer. Keep on ice.
+
+  - id: 23
+    name: "Transfer clarified VHH lysate to fresh IMAC block"
+    type: pipette
+    params:
+      source: "deep_well_block_expression"
+      destination: "deep_well_block_imac"
+      volume_ul: 160
+      aspirate_rate: 40          # very slow to avoid pellet carry-over
+      tip_type: "300ul"
+      new_tip: "always"
+    notes: >
+      Transfer 160 µL clarified supernatant, leaving ≥40 µL above pellet.
+      New tip per well essential — VHH clone identity must be maintained.
+
+  - id: 24
+    name: "Add Binding Buffer to adjust imidazole to 10 mM"
+    type: pipette
+    params:
+      source: "reagent_reservoir_binding_buffer"
+      destination: "deep_well_block_imac"
+      volume_ul: 40
+      tip_type: "300ul"
+      new_tip: "once"
+      multi_dispense: true
+    notes: "Brings total volume to ~200 µL and ensures 10 mM imidazole for Ni2+ binding."
+
+  - id: 25
+    name: "Add pre-equilibrated Ni-NTA magnetic beads"
+    type: pipette
+    params:
+      source: "reagent_reservoir_beads"
+      destination: "deep_well_block_imac"
+      volume_ul: 50              # 50 µL of 50% slurry = 25 µL settled beads
+      tip_type: "300ul"
+      new_tip: "once"
+      multi_dispense: true
+      mix_repetitions: 0         # do NOT vortex after beads added until binding step
+    notes: >
+      25 µL settled Ni-NTA beads per well. Mix capacity: ~5–15 µg His-tagged protein.
+      Ensure bead suspension is homogeneous — swirl reservoir before dispensing.
+
+  - id: 26
+    name: "IMAC binding: incubate beads + lysate, 4°C, 600 rpm, 60 min"
+    type: incubate
+    params:
+      temperature_c: 4
+      duration_s: 3600           # 60 min
+      shake_rpm: 600
+    notes: >
+      Gentle shaking at 4°C maximises His6-VHH binding while minimising
+      non-specific binding. Longer incubation (>90 min) does not improve yield.
+
+  # ── Magnetic bead wash cycle ──────────────────────────────────────────────
+
+  - id: 27
+    name: "Magnetic separation – capture beads (remove unbound lysate)"
+    type: magnetic_sep
+    params:
+      duration_s: 120            # 2 min — beads migrate to magnet
+    notes: >
+      Apply magnetic field for 2 min until supernatant is clear.
+      Unbound proteins (non-His-tagged contaminants) remain in solution.
+
+  - id: 28
+    name: "Aspirate unbound fraction (flow-through)"
+    type: pipette
+    params:
+      source: "deep_well_block_imac"
+      destination: "collection_plate_flowthrough"
+      volume_ul: 220
+      aspirate_rate: 25          # very slow — beads must stay on magnet wall
+      tip_type: "300ul"
+      new_tip: "always"
+    notes: >
+      While plate is on magnet, aspirate 220 µL supernatant carefully.
+      Keep collection plate — it can be re-loaded if yield is low.
+
+  - id: 29
+    name: "Wash 1: add Wash Buffer 1 (20 mM imidazole), resuspend beads"
+    type: pipette
+    params:
+      source: "reagent_reservoir_wash1"
+      destination: "deep_well_block_imac"
+      volume_ul: 300
+      tip_type: "300ul"
+      new_tip: "once"
+      multi_dispense: true
+      mix_repetitions: 5
+      mix_volume_ul: 200
+    notes: >
+      Remove plate from magnet. Add 300 µL Wash Buffer 1.
+      Pipette-mix 5× vigorously to resuspend beads — critical for thorough washing.
+
+  - id: 30
+    name: "Vortex to fully resuspend beads in Wash Buffer 1"
+    type: vortex
+    params:
+      rpm: 1000
+      duration_s: 30
+    notes: "30 s at 1000 rpm ensures homogeneous bead resuspension."
+
+  - id: 31
+    name: "Magnetic separation – capture beads (remove Wash 1)"
+    type: magnetic_sep
+    params:
+      duration_s: 120
+    notes: "2 min on magnet. Supernatant contains loosely-bound, non-specific proteins."
+
+  - id: 32
+    name: "Aspirate Wash 1 supernatant"
+    type: pipette
+    params:
+      source: "deep_well_block_imac"
+      destination: "waste_reservoir"
+      volume_ul: 280
+      aspirate_rate: 25
+      tip_type: "300ul"
+      new_tip: "once"
+    notes: "Discard Wash 1 supernatant. Leave beads on magnet wall."
+
+  - id: 33
+    name: "Wash 2: add Wash Buffer 2 (50 mM imidazole), resuspend beads"
+    type: pipette
+    params:
+      source: "reagent_reservoir_wash2"
+      destination: "deep_well_block_imac"
+      volume_ul: 300
+      tip_type: "300ul"
+      new_tip: "once"
+      multi_dispense: true
+      mix_repetitions: 5
+      mix_volume_ul: 200
+    notes: >
+      50 mM imidazole removes histidine-rich contaminants and weakly-bound
+      proteins that survive 20 mM wash. Remove plate from magnet before adding.
+
+  - id: 34
+    name: "Vortex to resuspend beads in Wash Buffer 2"
+    type: vortex
+    params:
+      rpm: 1000
+      duration_s: 30
+    notes: "Ensure all beads are off the wall and fully suspended."
+
+  - id: 35
+    name: "Magnetic separation – capture beads (remove Wash 2)"
+    type: magnetic_sep
+    params:
+      duration_s: 120
+    notes: "2 min on magnet. Discard in next step."
+
+  - id: 36
+    name: "Aspirate Wash 2 supernatant"
+    type: pipette
+    params:
+      source: "deep_well_block_imac"
+      destination: "waste_reservoir"
+      volume_ul: 280
+      aspirate_rate: 25
+      tip_type: "300ul"
+      new_tip: "once"
+    notes: "Discard Wash 2 supernatant."
+
+  - id: 37
+    name: "Wash 3: brief PBS rinse to remove imidazole carry-over"
+    type: pipette
+    params:
+      source: "reagent_reservoir_pbs"
+      destination: "deep_well_block_imac"
+      volume_ul: 200
+      tip_type: "300ul"
+      new_tip: "once"
+      multi_dispense: true
+      mix_repetitions: 3
+      mix_volume_ul: 150
+    notes: >
+      Quick PBS rinse reduces imidazole carry-over into elution fraction.
+      Important if eluate will be used directly in cell-based assays.
+
+  - id: 38
+    name: "Magnetic separation – capture beads (remove PBS wash)"
+    type: magnetic_sep
+    params:
+      duration_s: 120
+    notes: "2 min on magnet."
+
+  - id: 39
+    name: "Aspirate PBS wash supernatant"
+    type: pipette
+    params:
+      source: "deep_well_block_imac"
+      destination: "waste_reservoir"
+      volume_ul: 180
+      aspirate_rate: 25
+      tip_type: "300ul"
+      new_tip: "once"
+    notes: "Discard PBS rinse. Beads now on magnet wall, ready for elution."
+
+  # ── Elution ────────────────────────────────────────────────────────────────
+
+  - id: 40
+    name: "Elute VHH: add Elution Buffer (250 mM imidazole), resuspend"
+    type: pipette
+    params:
+      source: "reagent_reservoir_elution"
+      destination: "deep_well_block_imac"
+      volume_ul: 150
+      tip_type: "300ul"
+      new_tip: "once"
+      multi_dispense: true
+      mix_repetitions: 8
+      mix_volume_ul: 120
+    notes: >
+      Remove plate from magnet. Add 150 µL Elution Buffer. Mix vigorously 8× —
+      250 mM imidazole competitively displaces the His6 tag from Ni2+.
+
+  - id: 41
+    name: "Vortex to fully resuspend beads in Elution Buffer"
+    type: vortex
+    params:
+      rpm: 1200
+      duration_s: 60
+    notes: "1 min vortex ensures complete contact between beads and elution buffer."
+
+  - id: 42
+    name: "Elution incubation: 4°C, 600 rpm, 20 min"
+    type: incubate
+    params:
+      temperature_c: 4
+      duration_s: 1200           # 20 min
+      shake_rpm: 600
+    notes: "Gentle agitation at 4°C maximises VHH recovery from Ni-NTA beads."
+
+  - id: 43
+    name: "Magnetic separation – capture beads (collect VHH eluate)"
+    type: magnetic_sep
+    params:
+      duration_s: 180            # 3 min — ensure complete bead capture
+    notes: "3 min on magnet. Eluate (VHH-containing supernatant) ready to collect."
+
+  - id: 44
+    name: "Transfer VHH eluate to collection microplate"
+    type: pipette
+    params:
+      source: "deep_well_block_imac"
+      destination: "collection_plate_eluate"
+      volume_ul: 140
+      aspirate_rate: 20          # very slow — beads on magnet wall
+      tip_type: "300ul"
+      new_tip: "always"
+    notes: >
+      New tip per well — maintain VHH clone identity in collection plate.
+      Transfer 140 µL, leaving ≈10 µL to avoid bead carry-over.
+      VHH is now in 250 mM imidazole / 50 mM NaH2PO4 / 300 mM NaCl buffer.
+
+  # ══════════════════════════════════════════════════════════════
+  # STAGE 7 – QC AND STORAGE
+  # ══════════════════════════════════════════════════════════════
+
+  - id: 45
+    name: "Seal eluate collection plate"
+    type: manual
+    params: {}
+    notes: >
+      Seal eluate plate with adhesive foil. Keep at 4°C during QC.
+      Store at −80°C for long-term storage.
+
+  - id: 46
+    name: "Quantify VHH: NanoDrop / BCA / Quant-iT PicoGreen"
+    type: manual
+    params: {}
+    notes: >
+      Transfer 2 µL per well to a fresh plate for BCA protein assay,
+      or 1 µL per well to NanoDrop 8000 (A280, ε ≈ 41,940 M⁻¹cm⁻¹ for typical VHH).
+      Expected: 0.1–5 µg per 140 µL well (0.7–35 µg/mL).
+      Note: 250 mM imidazole absorbs at 254 nm — use BCA or Qubit for accuracy.
+
+  - id: 47
+    name: "SDS-PAGE QC check"
+    type: manual
+    params: {}
+    notes: >
+      Load 5 µL eluate per lane on a 15% SDS-PAGE gel.
+      Expected band: ~14–18 kDa (VHH monomer). A clean single band indicates
+      high purity. Multiple bands may indicate co-purifying His-tagged contaminants
+      — consider second IMAC pass or size-exclusion chromatography.
+
+  - id: 48
+    name: "Log purification results — protocol complete"
+    type: comment
+    params: {}
+    notes: >
+      96-Well VHH Expression and Ni-NTA Purification complete.
+      96 VHH nanobody clones processed in parallel.
+      Eluate plate ready for downstream screening:
+        • ELISA binding assay
+        • SPR / BLI affinity measurement
+        • Thermal stability (nanoDSF)
+        • Neutralisation assays
+        • Crystallography / cryo-EM sample prep
+
+# ── Safety notes ──────────────────────────────────────────────────────────────
+safety_notes:
+  - "BSL1 E. coli K-12 or BL21 strains. Standard PPE: nitrile gloves, lab coat, eye protection."
+  - "IPTG (isopropyl-β-D-thiogalactopyranoside): irritant. Avoid inhalation of powder. Gloves mandatory."
+  - "BugBuster contains non-ionic detergents — mild irritant. Avoid prolonged skin contact."
+  - "Lysozyme and DNase I: low hazard enzyme preparations. Standard lab handling."
+  - "Imidazole (all IMAC buffers): irritant at high concentrations. A260 absorbance — use BCA not NanoDrop at 280 nm for protein quantification in high-imidazole buffers."
+  - "Ampicillin: potential allergen. Avoid skin contact. Dispose of antibiotic-containing waste per institutional policy."
+  - "Centrifuge must be balanced with counterweight block before every spin."
+  - "IPTG-induced E. coli waste: autoclave at 121°C for 20 min before disposal."
+  - "Freeze-thaw at −80°C: use cryogloves when handling dry ice or liquid nitrogen."
+  - "All bacterial liquid waste must be autoclaved or chemically inactivated with 10% bleach (30 min contact) before drain disposal."

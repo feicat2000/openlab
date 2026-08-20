@@ -1,0 +1,127 @@
+# ──────────────────────────────────────────────────────────────────────────────
+#  OpenLab  –  Hardware Configuration
+#  Edit this file to match your physical lab setup.
+#  Sensitive values (IPs, ports, credentials) should be placed in .env instead.
+# ──────────────────────────────────────────────────────────────────────────────
+
+# ── Global simulation flag ────────────────────────────────────────────────────
+# Set to false when real hardware is connected and configured.
+simulation_mode: true
+
+# ── Relay board backend (used by mag separator, rocker) ──────────────────────
+# Options: "serial" (USB relay board) | "gpio" (Raspberry Pi) | "simulation"
+relay_backend: simulation
+
+# ── Opentrons OT-2 / Flex ─────────────────────────────────────────────────────
+opentrons:
+  ip: "169.254.10.10"       # USB-DHCP address (OT-2 default)
+  port: 31950               # HTTP API port
+  robot_type: OT2           # OT2 | FLEX
+  simulate: true
+  # Deck layout (slot → labware)
+  deck_layout:
+    1: "corning_96_wellplate_360ul_flat"
+    2: "opentrons_24_tuberack_eppendorf_1.5ml_safelock_snapcap"
+    3: "opentrons_96_tiprack_300ul"
+    4: "usascientific_12_reservoir_22ml"
+    5: "opentrons_96_tiprack_20ul"
+
+# ── Universal Robots Arm ──────────────────────────────────────────────────────
+robotic_arm:
+  ip: "192.168.1.10"
+  port: 30004               # RTDE port
+  simulate: true
+  gripper_open_mm: 85       # Robotiq 2F-85 open width (mm)
+  gripper_close_mm: 15      # close width for 1.5mL tube
+  gripper_force: 40         # % force (0–100)
+  speed_fast: 0.3           # m/s (production: 0.5)
+  speed_slow: 0.05          # m/s during tube insertion
+  max_payload_kg: 3.0       # UR3e limit
+
+# ── Named TCP poses (metres / radians, robot base frame) ─────────────────────
+# Run python tools/teach_positions.py to calibrate these from the teach pendant.
+arm_positions:
+  home:               [0.300, -0.200,  0.500, 3.14159, 0.0, 0.0]
+  opentrons_handoff:  [0.420, -0.080,  0.310, 3.14159, 0.0, 0.0]
+  vortex:             [0.200,  0.300,  0.250, 3.14159, 0.0, 0.0]
+  centrifuge_load:    [0.100,  0.420,  0.200, 3.14159, 0.0, 0.0]
+  centrifuge_unload:  [0.100,  0.420,  0.310, 3.14159, 0.0, 0.0]
+  magnetic_separator: [0.350,  0.250,  0.200, 3.14159, 0.0, 0.0]
+  rocker:             [0.250,  0.360,  0.200, 3.14159, 0.0, 0.0]
+  incubator:          [0.000,  0.450,  0.200, 3.14159, 0.0, 0.0]
+  tube_rack:          [0.300,  0.000,  0.250, 3.14159, 0.0, 0.0]
+  cap_tightener:      [0.150,  0.360,  0.200, 3.14159, 0.0, 0.0]
+
+# ── Vortex Mixer (IKA Vortex 3) ───────────────────────────────────────────────
+vortex:
+  port: "/dev/ttyUSB1"
+  baud_rate: 9600
+  simulate: true
+  max_rpm: 3000
+  model: "IKA Vortex 3"
+
+# ── Centrifuge (Eppendorf 5430R) ──────────────────────────────────────────────
+centrifuge:
+  port: "/dev/ttyUSB2"
+  baud_rate: 9600
+  simulate: true
+  max_rpm: 14000
+  rotor: "FA-45-30-11"        # Fixed-angle 30×1.5/2.0mL
+  model: "Eppendorf 5430R"
+
+# ── Incubator / Thermomixer (Inheco ODTC) ────────────────────────────────────
+incubator:
+  port: "/dev/ttyUSB3"
+  baud_rate: 9600
+  simulate: true
+  max_temp_c: 95
+  min_temp_c: 4              # requires cooling kit
+  max_shake_rpm: 1400
+  model: "Inheco ODTC"
+
+# ── Magnetic Separator ────────────────────────────────────────────────────────
+magnetic_separator:
+  relay_backend: simulation
+  relay_port: "/dev/ttyUSB5"
+  relay_channel: 1
+  gpio_pin: 22
+  simulate: true
+  model: "Alpaqua Magnum FLX"
+
+# ── Rocker / Nutator ──────────────────────────────────────────────────────────
+rocker:
+  relay_backend: simulation
+  relay_port: "/dev/ttyUSB4"
+  relay_channel: 2
+  gpio_pin: 24
+  simulate: true
+  has_speed_control: false
+  model: "Stuart SB3"
+
+# ── Safety ────────────────────────────────────────────────────────────────────
+safety:
+  max_centrifuge_rpm: 14000
+  max_incubator_temp_c: 95
+  estop_gpio_pin: 17          # BCM pin for physical E-stop (Raspberry Pi only)
+  arm_speed_limit_shared_zone: 0.25  # m/s – ISO/TS 15066 collaborative operation
+
+# ── Run output ────────────────────────────────────────────────────────────────
+runs_dir: "runs"
+data_dir: "data"
+log_dir:  "logs"
+
+# ── Calibration ───────────────────────────────────────────────────────────────
+calibration:
+  profiles_dir: "calibration"   # directory where calibration profiles are stored
+  default_profile: "default"    # profile loaded when --profile not specified
+  drift_threshold_mm: 2.0       # alert threshold for pose drift detection
+
+# ── Notifications ─────────────────────────────────────────────────────────────
+notifications:
+  slack_webhook: ""             # Slack incoming webhook URL (leave empty to disable)
+  email:
+    smtp_host: ""               # e.g. "smtp.gmail.com"
+    smtp_port: 587
+    username: ""                # sender address
+    password: ""                # SMTP password / app-specific password
+    recipients: []              # list of recipient email addresses
